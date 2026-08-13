@@ -2,6 +2,7 @@ import { Context } from 'hono';
 import { drizzle } from 'drizzle-orm/d1';
 import { registeredTools, developers } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { PAYGATE_TOOLS, executePaygateTool } from './paygate-tools';
 
 export async function paygateMcpHandler(c: Context) {
   try {
@@ -64,94 +65,21 @@ export async function paygateMcpHandler(c: Context) {
       responsePayload = {
         jsonrpc: '2.0',
         id: body.id,
-        result: {
-          tools: [
-            {
-              name: 'list_registered_servers',
-              description: 'List all monetized MCP servers and tools available through PayGate, including prices, tool descriptions, and proxy endpoints.',
-              annotations: {
-                readOnlyHint: true,
-                consequence: 'none',
-                title: 'List Registered Monetized Servers',
-                description: 'Queries the PayGate catalogue for all active monetized servers and their available tools.'
-              },
-              inputSchema: {
-                type: 'object',
-                properties: {
-                  category: { type: 'string', description: 'Optional category filter (e.g. "tax", "crypto", "dev")' }
-                }
-              },
-              outputSchema: {
-                type: 'object',
-                properties: {
-                  total_servers: { type: 'number', description: 'Total number of active registered servers' },
-                  servers: {
-                    type: 'array',
-                    description: 'List of active monetized MCP servers',
-                    items: {
-                      type: 'object',
-                      properties: {
-                        developer_name: { type: 'string', description: 'Name of the developer or service' },
-                        proxy_mcp_url: { type: 'string', description: 'Proxy URL for agents to access tools' },
-                        tools: {
-                          type: 'array',
-                          items: {
-                            type: 'object',
-                            properties: {
-                              name: { type: 'string', description: 'Name of the tool' },
-                              price_usd: { type: 'string', description: 'Price per call in USD' },
-                              description: { type: 'string', description: 'Description of tool capabilities' }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          ]
-        }
+        result: { tools: PAYGATE_TOOLS }
       };
     }
 
     // 3. TOOLS/CALL
     else if (body.method === 'tools/call') {
-      const toolName = body.params?.name;
-      if (toolName === 'list_registered_servers') {
-        const db = drizzle(c.env.DB);
-        const devList = await db.select().from(developers).where(eq(developers.isActive, 1));
-        const toolsList = await db.select().from(registeredTools).where(eq(registeredTools.isActive, 1));
-
-        const catalog = devList.map(dev => {
-          const devTools = toolsList.filter(t => t.developerId === dev.id);
-          return {
-            developer_name: dev.name,
-            proxy_mcp_url: `https://${host}/mcp/${dev.id}`,
-            tools: devTools.map(t => ({
-              name: t.toolName,
-              price_usd: (t.priceCents / 100).toFixed(2),
-              description: t.description
-            }))
-          };
-        });
-
-        responsePayload = {
+      const result = await executePaygateTool(c, body.params?.name, body.params?.arguments || {}, host);
+      if (result === null) {
+        return c.json({
           jsonrpc: '2.0',
           id: body.id,
-          result: {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  total_servers: catalog.length,
-                  servers: catalog
-                }, null, 2)
-              }
-            ]
-          }
-        };
+          error: { code: -32602, message: `Unknown tool: ${body.params?.name}` }
+        }, 200);
       }
+      responsePayload = { jsonrpc: '2.0', id: body.id, result };
     }
 
     // 4. RESOURCES/LIST
