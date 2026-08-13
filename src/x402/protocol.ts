@@ -75,13 +75,63 @@ export function buildPaymentRequired(
   requirements: PaymentRequirements[],
   resource: ResourceInfo,
   error = 'Payment required to access this resource',
+  extensions: Record<string, unknown> = {},
 ): PaymentRequired {
   return {
     x402Version: X402_VERSION,
     error,
     resource,
     accepts: requirements,
-    extensions: {},
+    extensions,
+  };
+}
+
+/**
+ * Extensão `bazaar`: descreve a ferramenta no próprio desafio para que o
+ * facilitator possa catalogá-la no serviço de descoberta. É assim que um
+ * serviço x402 vira encontrável — não há formulário de submissão.
+ */
+export function buildBazaarExtension(
+  toolName: string,
+  description: string,
+  inputSchema: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    info: {
+      input: {
+        type: 'mcp',
+        toolName,
+        description,
+        transport: 'streamable-http',
+        inputSchema,
+      },
+      output: { type: 'json' },
+    },
+    schema: {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      type: 'object',
+      properties: {
+        input: {
+          type: 'object',
+          properties: {
+            type: { type: 'string', const: 'mcp' },
+            toolName: { type: 'string' },
+            description: { type: 'string' },
+            transport: { type: 'string', enum: ['streamable-http', 'sse'] },
+            inputSchema: { type: 'object' },
+            example: { type: 'object' },
+          },
+          required: ['type', 'toolName', 'inputSchema'],
+          additionalProperties: false,
+        },
+        output: {
+          type: 'object',
+          properties: { type: { type: 'string' }, example: { type: 'object' } },
+          required: ['type'],
+        },
+      },
+      required: ['input'],
+    },
   };
 }
 

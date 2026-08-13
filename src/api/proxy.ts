@@ -9,6 +9,7 @@ import { verifyPayment, settlePayment } from '../x402/facilitator';
 import {
   buildPaymentRequirements,
   buildPaymentRequired,
+  buildBazaarExtension,
   buildMcpPaymentRequiredResult,
   extractMcpPayment,
   extractHttpPayment,
@@ -47,6 +48,24 @@ async function proxyFetch(c: Context, targetUrl: string, body: any): Promise<Res
     return c.env.ORACULO_B2R.fetch(request);
   }
   return fetch(request);
+}
+
+/** Busca o esquema de entrada da ferramenta no servidor do desenvolvedor. */
+async function fetchUpstreamToolSchema(
+  c: Context,
+  targetUrl: string,
+  toolName: string,
+): Promise<{ description?: string; inputSchema: Record<string, unknown> } | null> {
+  const resp = await proxyFetch(c, targetUrl, {
+    jsonrpc: '2.0',
+    id: 'schema-lookup',
+    method: 'tools/list',
+  });
+  if (!resp.ok) return null;
+  const data = (await resp.json()) as any;
+  const tool = (data?.result?.tools || []).find((t: any) => t.name === toolName);
+  if (!tool?.inputSchema) return null;
+  return { description: tool.description, inputSchema: tool.inputSchema };
 }
 
 function jsonRpcError(c: Context, id: unknown, code: number, message: string, status = 200) {
@@ -164,10 +183,29 @@ export async function mcpProxyHandler(c: Context) {
 
   // ── 2a. Sem pagamento: devolver o desafio x402 ──
   if (!payment && !stripeAttempt) {
+    // O esquema da ferramenta vem do servidor de destino e alimenta a extensão
+    // bazaar, que é o que torna o serviço encontrável pelo facilitator.
+    let extensions: Record<string, unknown> = {};
+    try {
+      const schema = await fetchUpstreamToolSchema(c, dev.targetServerUrl, toolName);
+      if (schema) {
+        extensions = {
+          bazaar: buildBazaarExtension(
+            toolName,
+            schema.description || resourceInfo.description,
+            schema.inputSchema,
+          ),
+        };
+      }
+    } catch {
+      // Catálogo é opcional: sem o esquema, o desafio segue válido.
+    }
+
     const paymentRequired = buildPaymentRequired(
       [expected],
       resourceInfo,
       `Payment required: ${toolName} custa $${(priceCents / 100).toFixed(2)} USDC.`,
+      extensions,
     );
 
     // Header base64 para clientes que falam o transporte HTTP do x402.
