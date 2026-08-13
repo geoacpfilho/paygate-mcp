@@ -4,6 +4,7 @@ import { streamSSE } from 'hono/streaming';
 import { registerDeveloperHandler } from './api/register';
 import { mcpProxyHandler } from './api/proxy';
 import { serverCardHandler, ucpManifestHandler } from './api/discovery';
+import { llmsTxtHandler } from './api/llms-txt';
 import { paygateMcpHandler } from './api/mcp-server';
 import type { Env } from './env';
 import { resolveNetwork } from './x402/config';
@@ -114,6 +115,8 @@ app.get('/icon.svg', (c) => {
 });
 
 // Descoberta Automática Smithery / Glama / UCP (Múltiplas aliases para garantia de indexação)
+app.get('/llms.txt', llmsTxtHandler);
+app.get('/.well-known/llms.txt', llmsTxtHandler);
 app.get('/.well-known/mcp/server-card.json', serverCardHandler);
 app.get('/.well-known/mcp.json', serverCardHandler);
 app.get('/.well-known/mcp/manifest.json', serverCardHandler);
