@@ -135,9 +135,11 @@ const paid = await rpc({
 const receipt = paid?.result?._meta?.['x402/payment-response'];
 
 if (receipt?.transaction) {
+  const explorer =
+    chainId === 8453 ? 'https://basescan.org' : 'https://sepolia.basescan.org';
   console.log('PAGAMENTO LIQUIDADO');
   console.log(`  tx        : ${receipt.transaction}`);
-  console.log(`  explorer  : https://basescan.org/tx/${receipt.transaction}`);
+  console.log(`  explorer  : ${explorer}/tx/${receipt.transaction}`);
   console.log(`  pagador   : ${receipt.payer}`);
   console.log(`  valor     : $${receipt.amount_usd}`);
   console.log(`  taxa      : $${receipt.paygate_fee_usd}`);

@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
 export const developers = sqliteTable('developers', {
   id: text('id').primaryKey(),
@@ -10,8 +11,8 @@ export const developers = sqliteTable('developers', {
   walletAddress: text('wallet_address'),
   commissionRate: real('commission_rate').default(0.02),
   isActive: integer('is_active').default(1),
-  createdAt: text('created_at').default('(datetime(\'now\'))'),
-  updatedAt: text('updated_at').default('(datetime(\'now\'))'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at').default(sql`(datetime('now'))`),
 });
 
 export const registeredTools = sqliteTable('registered_tools', {
@@ -21,7 +22,7 @@ export const registeredTools = sqliteTable('registered_tools', {
   priceCents: integer('price_cents').notNull(),
   description: text('description'),
   isActive: integer('is_active').default(1),
-  createdAt: text('created_at').default('(datetime(\'now\'))'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
 export const transactions = sqliteTable('transactions', {
@@ -38,11 +39,11 @@ export const transactions = sqliteTable('transactions', {
   stripePaymentId: text('stripe_payment_id'),
   splitStatus: text('split_status').default('settled'),
   splitCompletedAt: text('split_completed_at'),
-  createdAt: text('created_at').default('(datetime(\'now\'))'),
+  createdAt: text('created_at').default(sql`(datetime('now'))`),
 });
 
 export const processedPaymentProofs = sqliteTable('processed_payment_proofs', {
   proofHash: text('proof_hash').primaryKey(),
   transactionId: text('transaction_id').notNull().references(() => transactions.id),
-  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
