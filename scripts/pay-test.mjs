@@ -127,6 +127,11 @@ const paid = await rpc({
         resource: required.resource,
         accepted: req,
         payload: { signature, authorization },
+        // Devolver as extensões do desafio é o que leva os metadados do
+        // bazaar até o facilitator, que só então cataloga a ferramenta.
+        ...(required.extensions && Object.keys(required.extensions).length
+          ? { extensions: required.extensions }
+          : {}),
       },
     },
   },
