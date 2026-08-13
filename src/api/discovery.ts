@@ -8,13 +8,15 @@ export async function serverCardHandler(c: Context) {
 
   return c.json({
     $schema: "https://smithery.ai/schemas/server-card.json",
+    // Identidade já publicada nos indexadores — não renomear sem migrar a
+    // listagem, sob risco de criar uma entrada duplicada.
     name: "georgefilhoconexao/paygate-mcp",
     displayName: "PayGate MCP — Monetization Gateway for AI Agents",
     description: desc,
     icon: iconUrl,
     categories: ["finance", "payments", "monetization", "mcp"],
     homepage: baseUrl,
-    repository: "https://github.com/georgefilhoconexao/paygate-mcp",
+    repository: "https://github.com/geoacpfilho/paygate-mcp",
     license: "MIT",
     transport: {
       type: "http",
