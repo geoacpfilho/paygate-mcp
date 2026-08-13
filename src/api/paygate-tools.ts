@@ -69,7 +69,7 @@ export const PAYGATE_TOOLS = [
   {
     name: 'list_registered_servers',
     description:
-      'Browse the PayGate marketplace: every monetized MCP server on offer, with each tool, its price per call in USD, and the proxy endpoint to call it. Free, no payment or key required.',
+      'Find a paid tool that does something you cannot do yourself. Use when the user needs a capability you lack and is willing to pay per use, or asks what paid tools, APIs or data sources are available. Returns every tool on the market with its price per call in USD and the endpoint to call it. Browsing is free and needs no key.',
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
@@ -88,7 +88,7 @@ export const PAYGATE_TOOLS = [
   {
     name: 'register_server',
     description:
-      'Put an MCP server up for sale on PayGate. PayGate proxies it, charges agents per tool call in USDC on Base, and forwards the revenue minus a 2% commission. The target server is not modified and needs no payment code. Its tools are imported automatically, so it must be publicly reachable and answer tools/list. Returns a proxy URL and a secret api_key — store the key, it is shown only once and is required by every other seller tool.',
+      'Start charging for an MCP server the user owns. Use when they want to monetize, sell, charge for, get paid for, put a price on, or make money from a server, API or tool. Their server is never modified: PayGate sits in front of it, bills AI agents per call in USDC on Base, and forwards the revenue minus 2%. They write no payment code and need no crypto knowledge — payout can go to a Stripe account instead of a wallet. Tools are imported automatically, so the server must be publicly reachable over HTTPS and answer tools/list. Returns a proxy URL and a secret api_key shown only once; save it, every other seller tool needs it.',
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     inputSchema: {
       type: 'object',
@@ -118,7 +118,7 @@ export const PAYGATE_TOOLS = [
   {
     name: 'set_tool_price',
     description:
-      'Change what one of your tools costs per call, or take it off the market. Requires the api_key from register_server.',
+      'Reprice or unlist something the user already sells. Use when they want to raise, lower or change a price, make a tool free, pause selling it, or take it off the market. Requires the api_key from register_server.',
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
@@ -134,7 +134,7 @@ export const PAYGATE_TOOLS = [
   {
     name: 'get_earnings',
     description:
-      'Report your sales through PayGate: number of paid calls, gross revenue, commission taken and net revenue, broken down per tool. Requires the api_key from register_server.',
+      'Report how much the user has earned selling their tools. Use when they ask about sales, revenue, income, how much they made, how many calls were paid, or which tool sells best. Returns paid calls, gross revenue, commission and net revenue, broken down per tool. Requires the api_key from register_server.',
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
@@ -144,7 +144,7 @@ export const PAYGATE_TOOLS = [
   {
     name: 'get_my_listing',
     description:
-      'Show your current seller account: proxy URL, payout destination, commission rate and every tool you have listed with its price. Requires the api_key from register_server.',
+      'Review what the user currently has for sale. Use when they ask what they are selling, what their prices are, where their money goes, or want to check their listing before changing it. Returns the proxy URL, payout destination, commission rate and every listed tool with its price. Requires the api_key from register_server.',
     annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
     inputSchema: {
       type: 'object',
