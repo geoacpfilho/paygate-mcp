@@ -35,7 +35,7 @@ app.get('/health', (c) => {
   return c.json({
     status: 'operational',
     service: 'paygate-mcp',
-    version: '0.1.0',
+    version: c.env.SERVICE_VERSION || '0.2.0',
     timestamp: new Date().toISOString()
   });
 });
@@ -137,11 +137,11 @@ app.get('/mcp', async (c) => {
   return c.json({
     status: 'operational',
     service: 'paygate-mcp',
-    version: '0.1.0',
+    version: c.env.SERVICE_VERSION || '0.2.0',
     endpoint: `https://${host}/mcp`,
     transport: 'streamable_http',
     capabilities: { tools: { listChanged: false } },
-    serverInfo: { name: 'paygate-mcp', version: '0.1.0' }
+    serverInfo: { name: 'paygate-mcp', version: c.env.SERVICE_VERSION || '0.2.0' }
   });
 });
 

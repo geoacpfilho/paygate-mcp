@@ -43,7 +43,7 @@ export async function paygateMcpHandler(c: Context) {
           },
           serverInfo: {
             name: 'paygate-mcp',
-            version: '0.1.0',
+            version: c.env.SERVICE_VERSION || '0.2.0',
             title: 'PayGate MCP — Monetization Gateway for AI Agents',
             displayName: 'PayGate MCP — Monetization Gateway for AI Agents',
             description: desc,
