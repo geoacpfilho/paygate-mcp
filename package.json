@@ -1,6 +1,6 @@
 {
   "name": "paygate-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Universal payment proxy and monetization gateway for Model Context Protocol (MCP) servers. Enables automated machine-to-machine HTTP 402 billing with x402 USDC on Base and Stripe MPP.",
   "main": "src/index.ts",
   "homepage": "https://paygate-mcp.rendercriativo.workers.dev",
