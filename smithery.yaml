@@ -1,0 +1,16 @@
+# Smithery.ai Configuration for PayGate MCP
+version: '1.0'
+name: georgefilhoconexao/paygate
+displayName: PayGate MCP — Monetization Gateway for AI Agents
+description: Universal monetization gateway for Model Context Protocol (MCP) servers. Enables automated machine-to-machine HTTP 402 billing with x402 USDC on Base and Stripe MPP.
+homepage: https://paygate-mcp.rendercriativo.workers.dev
+icon: https://paygate-mcp.rendercriativo.workers.dev/icon.svg
+
+url: https://paygate-mcp.rendercriativo.workers.dev/mcp
+transport: streamable_http
+
+categories:
+  - finance
+  - payments
+  - monetization
+  - mcp

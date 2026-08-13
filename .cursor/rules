@@ -1,0 +1,18 @@
+# Regras do Projeto — PayGate MCP
+
+## Stack
+- Runtime: Cloudflare Workers
+- Framework: Hono (TypeScript)
+- Base de Dados: Cloudflare D1
+- Protocolo: MCP (JSON-RPC 2.0) Proxy
+- Monetização: x402 + Stripe MPP
+
+## Convenções
+- TypeScript estrito (strict: true)
+- Nomes em inglês, comentários em português
+- Handlers enxutos e modularizados em src/
+- Respostas estritamente em JSON legível por máquina
+
+## Comandos
+- Dev: `npx wrangler dev`
+- Deploy: `npx wrangler deploy`

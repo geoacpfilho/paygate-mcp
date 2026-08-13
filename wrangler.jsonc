@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "paygate-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "paygate-db",
+      "database_id": "a43f4369-a916-401e-85a9-114392fb3041"
+    }
+  ],
+  "services": [
+    {
+      "binding": "ORACULO_B2R",
+      "service": "oraculo-b2r"
+    }
+  ],
+  "vars": {
+    "ENVIRONMENT": "development",
+    "SERVICE_NAME": "paygate-mcp",
+    "SERVICE_VERSION": "0.1.0"
+  }
+}

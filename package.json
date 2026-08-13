@@ -1,0 +1,45 @@
+{
+  "name": "paygate-mcp",
+  "version": "0.1.0",
+  "description": "Universal payment proxy and monetization gateway for Model Context Protocol (MCP) servers. Enables automated machine-to-machine HTTP 402 billing with x402 USDC on Base and Stripe MPP.",
+  "main": "src/index.ts",
+  "homepage": "https://paygate-mcp.rendercriativo.workers.dev",
+  "icon": "https://paygate-mcp.rendercriativo.workers.dev/icon.svg",
+  "author": "Render Criativo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/georgefilhoconexao/paygate-mcp.git"
+  },
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "paygate",
+    "x402",
+    "stripe",
+    "ai-agents",
+    "monetization",
+    "payment-gateway",
+    "base",
+    "usdc"
+  ],
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.31",
+    "nanoid": "^5.1.16",
+    "stripe": "^22.3.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260721.1",
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^7.0.2",
+    "viem": "^2.55.13",
+    "vitest": "^4.1.10",
+    "wrangler": "^4.113.0"
+  }
+}

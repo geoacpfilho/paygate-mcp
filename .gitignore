@@ -1,0 +1,22 @@
+# Dependências
+node_modules/
+
+# Estado local do Wrangler/Miniflare — contém o D1 local com hashes de API key
+.wrangler/
+
+# Logs de tráfego — contêm headers e IPs de visitantes reais
+*.log
+*.pid
+
+# Segredos (nunca devem existir aqui; os do projeto vivem em `wrangler secret`)
+.env
+.env.*
+.dev.vars
+*.pem
+*.key
+
+# Configuração local de ferramentas
+.claude/settings.local.json
+
+# Sistema
+.DS_Store
