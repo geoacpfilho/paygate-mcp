@@ -3,6 +3,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { developers, registeredTools } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { isEvmAddress } from './proxy';
 
 export async function registerDeveloperHandler(c: Context) {
   try {
@@ -20,6 +21,15 @@ export async function registerDeveloperHandler(c: Context) {
           wallet_address: 'Endereço USDC na rede Base (ex: 0x...) — recebe via Coinbase CDP',
           stripe_account_id: 'ID da conta Stripe Connect (ex: acct_xxx) — recebe via Stripe Transfer'
         }
+      }, 400);
+    }
+
+    // A carteira recebe o pagamento diretamente do comprador, então um endereço
+    // malformado enviaria dinheiro para o vazio.
+    if (wallet_address && !isEvmAddress(wallet_address)) {
+      return c.json({
+        error: `"${wallet_address}" não é um endereço EVM válido.`,
+        expected: '0x seguido de 40 caracteres hexadecimais'
       }, 400);
     }
 

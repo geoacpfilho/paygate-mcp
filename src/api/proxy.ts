@@ -31,17 +31,34 @@ export function isEvmAddress(value?: string | null): boolean {
 }
 const STRIPE_TOKEN_PREFIXES = ['pm_', 'tok_', 'spt_'];
 
+/**
+ * Hosts cuja infraestrutura é do próprio operador do PayGate e que, por isso,
+ * podem receber o UPSTREAM_AUTH_TOKEN.
+ */
+const OWN_UPSTREAM_HOSTS = ['oraculo-b2r.rendercriativo.workers.dev'];
+
+function isOwnUpstream(targetUrl: string): boolean {
+  try {
+    return OWN_UPSTREAM_HOSTS.includes(new URL(targetUrl).host);
+  } catch {
+    return false;
+  }
+}
+
 async function proxyFetch(c: Context, targetUrl: string, body: any): Promise<Response> {
-  const isB2R = targetUrl.includes('oraculo-b2r');
+  const own = isOwnUpstream(targetUrl);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'User-Agent': 'PayGate-MCP-Proxy/0.2.0',
   };
 
-  // Token do servidor de destino. Mantido configurável; o valor antigo segue
-  // como padrão para não quebrar o backend já em produção.
-  const upstreamToken = c.env.UPSTREAM_AUTH_TOKEN || 'spt_test';
-  headers['Authorization'] = `Bearer ${upstreamToken}`;
+  // O token só vai para a infraestrutura do próprio operador. Enviá-lo a todo
+  // destino entregaria a credencial a qualquer pessoa que cadastrasse um
+  // servidor — bastaria ela ler o cabeçalho da requisição que recebeu.
+  // Servidores de terceiros são chamados sem credencial alguma.
+  if (own && c.env.UPSTREAM_AUTH_TOKEN) {
+    headers['Authorization'] = `Bearer ${c.env.UPSTREAM_AUTH_TOKEN}`;
+  }
 
   const request = new Request(targetUrl, {
     method: 'POST',
@@ -49,7 +66,7 @@ async function proxyFetch(c: Context, targetUrl: string, body: any): Promise<Res
     body: JSON.stringify(body),
   });
 
-  if (isB2R && c.env.ORACULO_B2R) {
+  if (own && c.env.ORACULO_B2R) {
     return c.env.ORACULO_B2R.fetch(request);
   }
   return fetch(request);

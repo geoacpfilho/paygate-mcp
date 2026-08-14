@@ -25,9 +25,24 @@ app.use('*', cors({
   exposeHeaders: ['WWW-Authenticate', 'PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'],
 }));
 
+// Cabeçalhos sensíveis nunca vão para o log: Authorization carrega a chave do
+// vendedor e PAYMENT-SIGNATURE carrega a autorização de pagamento assinada.
+// CF-Connecting-IP identifica quem chamou, e não é nosso para registrar.
+const REDACTED_HEADERS = new Set([
+  'authorization',
+  'payment-signature',
+  'cookie',
+  'cf-connecting-ip',
+  'x-forwarded-for',
+]);
+
 app.use('*', async (c, next) => {
-  console.log(`[REQ] ${c.req.method} ${c.req.url}`);
-  console.log(`[HEADERS]`, JSON.stringify(c.req.header()));
+  const safe: Record<string, string> = {};
+  for (const [name, value] of Object.entries(c.req.header())) {
+    safe[name] = REDACTED_HEADERS.has(name.toLowerCase()) ? '[redacted]' : value;
+  }
+  console.log(`[REQ] ${c.req.method} ${new URL(c.req.url).pathname}`);
+  console.log(`[HEADERS]`, JSON.stringify(safe));
   await next();
 });
 
