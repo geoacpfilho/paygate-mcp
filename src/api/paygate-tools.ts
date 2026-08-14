@@ -14,6 +14,7 @@ import { drizzle } from 'drizzle-orm/d1';
 import { developers, registeredTools, transactions } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { isEvmAddress } from './proxy';
 
 export const DEFAULT_PRICE_CENTS = 2;
 
@@ -88,7 +89,7 @@ export const PAYGATE_TOOLS = [
   {
     name: 'register_server',
     description:
-      'Start charging for an MCP server the user owns. Use when they want to monetize, sell, charge for, get paid for, put a price on, or make money from a server, API or tool. Their server is never modified: PayGate sits in front of it, bills AI agents per call in USDC on Base, and forwards the revenue minus 2%. They write no payment code and need no crypto knowledge — payout can go to a Stripe account instead of a wallet. Tools are imported automatically, so the server must be publicly reachable over HTTPS and answer tools/list. Returns a proxy URL and a secret api_key shown only once; save it, every other seller tool needs it.',
+      'Start charging for an MCP server the user owns. Use when they want to monetize, sell, charge for, get paid for, put a price on, or make money from a server, API or tool. Buyers pay their wallet DIRECTLY on-chain — PayGate never holds the money, so there is no payout to wait for, no balance to withdraw and no commission taken. Their server is never modified and needs no payment code. Tools are imported automatically, so it must be publicly reachable over HTTPS and answer tools/list. Returns a proxy URL and a secret api_key shown only once; save it, every other seller tool needs it.',
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
     inputSchema: {
       type: 'object',
@@ -212,6 +213,14 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
         'Provide wallet_address (EVM address for USDC on Base) or stripe_account_id (acct_...).',
       );
     }
+    // A carteira recebe o pagamento diretamente, então um endereço malformado
+    // mandaria dinheiro para lugar nenhum. Recusar antes de listar.
+    if (wallet_address && !isEvmAddress(wallet_address)) {
+      return toolFailure(
+        `"${wallet_address}" is not a valid EVM address.`,
+        'Expected 0x followed by 40 hex characters. Buyers pay this address directly, so it must be exact.',
+      );
+    }
     let targetUrl: URL;
     try {
       targetUrl = new URL(target_server_url);
@@ -309,8 +318,11 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
       api_key_notice: 'Shown once. Store it — every other seller tool requires it.',
       imported_tools: discovered.map((t) => t.name),
       price_per_call_usd: (priceCents / 100).toFixed(2),
-      commission: '2%',
-      payout_to: wallet_address || stripe_account_id,
+      paid_directly_to: wallet_address || stripe_account_id,
+      custody: wallet_address
+        ? 'None. Buyers settle USDC straight to your wallet; PayGate never receives or holds your funds.'
+        : 'Stripe payouts are forwarded by PayGate.',
+      commission: wallet_address ? '0% — nothing is deducted from a direct payment' : '2%',
       next_step:
         'Agents can now discover and pay for these tools. Adjust pricing with set_tool_price, track revenue with get_earnings.',
     });

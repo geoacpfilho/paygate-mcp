@@ -24,6 +24,11 @@ import {
 } from '../x402/protocol';
 
 const DEFAULT_PAYGATE_WALLET = '0x82e36db0d0001d9c1f12a1b6761fbbad48f0999e';
+
+/** Endereço EVM válido: 0x seguido de 40 dígitos hexadecimais. */
+export function isEvmAddress(value?: string | null): boolean {
+  return typeof value === 'string' && /^0x[a-fA-F0-9]{40}$/.test(value.trim());
+}
 const STRIPE_TOKEN_PREFIXES = ['pm_', 'tok_', 'spt_'];
 
 async function proxyFetch(c: Context, targetUrl: string, body: any): Promise<Response> {
@@ -166,7 +171,14 @@ export async function mcpProxyHandler(c: Context) {
   const facilitatorUrl = c.env.X402_FACILITATOR_URL || network.defaultFacilitator;
   const host = c.req.header('host') || 'paygate-mcp.rendercriativo.workers.dev';
 
-  const expected: PaymentRequirements = buildPaymentRequirements(network, priceCents, paygateWallet);
+  // O pagamento vai direto para a carteira do vendedor. O PayGate não custodia
+  // dinheiro alheio: não há saldo a repassar, nada a reter e nada que possa
+  // falhar entre receber e pagar. Sem carteira declarada (caso Stripe), o valor
+  // cai na carteira do PayGate e o repasse segue pelo caminho antigo.
+  const payTo = isEvmAddress(dev.walletAddress) ? dev.walletAddress! : paygateWallet;
+  const directToSeller = payTo.toLowerCase() !== paygateWallet.toLowerCase();
+
+  const expected: PaymentRequirements = buildPaymentRequirements(network, priceCents, payTo);
   const resourceInfo = {
     url: `mcp://tool/${toolName}`,
     description: toolConfig.length > 0 ? toolConfig[0].description || toolName : toolName,
@@ -232,6 +244,7 @@ export async function mcpProxyHandler(c: Context) {
       paymentMethod: 'stripe_mpp',
       txReference: verification.txHashOrId || null,
       proofHash: await sha256Hex(`stripe:${verification.txHashOrId}`),
+      directToSeller: false,
       settle: null,
     });
   }
@@ -276,6 +289,7 @@ export async function mcpProxyHandler(c: Context) {
     paymentMethod: 'x402',
     txReference: null,
     proofHash,
+    directToSeller,
     settle: { facilitatorUrl, payment: payment!, requirements: expected },
   });
 }
@@ -297,6 +311,8 @@ interface ExecuteArgs {
   paymentMethod: 'x402' | 'stripe_mpp';
   txReference: string | null;
   proofHash: string;
+  /** true quando o pagamento vai direto do agente para a carteira do vendedor. */
+  directToSeller: boolean;
   settle: { facilitatorUrl: string; payment: PaymentPayload; requirements: PaymentRequirements } | null;
 }
 
@@ -310,7 +326,9 @@ async function executeAndRecord(c: Context, args: ExecuteArgs) {
   const grossCents = priceCents;
   // Sem piso de 1 centavo: em micropagamentos ele transformava os 2% anunciados
   // em 20–50% reais. Abaixo de meio centavo a comissão é zero, e tudo bem.
-  const commissionCents = Math.round(grossCents * (dev.commissionRate || 0.02));
+  const commissionCents = args.directToSeller
+    ? 0
+    : Math.round(grossCents * (dev.commissionRate || 0.02));
   const netCents = grossCents - commissionCents;
   const txId = `tx_${nanoid(12)}`;
 
@@ -405,14 +423,16 @@ async function executeAndRecord(c: Context, args: ExecuteArgs) {
     await db.update(transactions).set({ status: 'completed' }).where(eq(transactions.id, txId));
   }
 
-  // Repasse ao desenvolvedor. Quando a carteira do dev é a própria carteira do
-  // PayGate, o valor já chegou ao destino e não há transferência a fazer.
-  const paygateWallet = c.env.PAYGATE_WALLET_ADDRESS || DEFAULT_PAYGATE_WALLET;
-  const selfOwned =
-    paymentMethod === 'x402' &&
-    (dev.walletAddress || '').toLowerCase() === paygateWallet.toLowerCase();
-
-  if (selfOwned) {
+  // Repasse ao desenvolvedor. No modo direto o agente já pagou a carteira do
+  // vendedor on-chain, então não existe transferência a fazer — o dinheiro
+  // nunca passou pelo PayGate. Só o caminho Stripe ainda envolve repasse.
+  if (args.directToSeller) {
+    await db
+      .update(transactions)
+      .set({ splitStatus: 'direct', splitCompletedAt: new Date().toISOString() })
+      .where(eq(transactions.id, txId));
+  } else if (paymentMethod === 'x402') {
+    // Carteira do vendedor é a do próprio PayGate: já chegou ao destino.
     await db
       .update(transactions)
       .set({ splitStatus: 'completed', splitCompletedAt: new Date().toISOString() })
@@ -439,8 +459,9 @@ async function executeAndRecord(c: Context, args: ExecuteArgs) {
   const receipt = {
     ...settlementInfo,
     amount_usd: (priceCents / 100).toFixed(2),
+    paid_directly_to_seller: args.directToSeller,
     paygate_fee_usd: (commissionCents / 100).toFixed(3),
-    developer_net_usd: (netCents / 100).toFixed(3),
+    seller_net_usd: (netCents / 100).toFixed(3),
   };
 
   c.header('PAYMENT-RESPONSE', encodeHeaderValue(receipt));
