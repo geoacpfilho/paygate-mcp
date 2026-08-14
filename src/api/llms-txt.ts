@@ -60,6 +60,6 @@ rest. Browsing the marketplace and listing a server are free.
 - Health of the payment rail: ${base}/health/x402
 - Server card: ${base}/.well-known/mcp/server-card.json
 - Source: https://github.com/geoacpfilho/paygate-mcp
-- Registry: io.github.geoacpfilho/paygate-x402-payments-monetization
+- Registry: io.github.geoacpfilho/paygate-monetize-monetization-x402
 `);
 }
