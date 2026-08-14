@@ -11,6 +11,10 @@ export const developers = sqliteTable('developers', {
   walletAddress: text('wallet_address'),
   commissionRate: real('commission_rate').default(0.02),
   isActive: integer('is_active').default(1),
+  // Posse do servidor comprovada: 1 depois que o dono publica o token de
+  // verificação no domínio do próprio servidor. Fica visível no catálogo.
+  isVerified: integer('is_verified').default(0),
+  verifyToken: text('verify_token'),
   createdAt: text('created_at').default(sql`(datetime('now'))`),
   updatedAt: text('updated_at').default(sql`(datetime('now'))`),
 });

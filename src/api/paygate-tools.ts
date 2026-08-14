@@ -83,6 +83,10 @@ export const PAYGATE_TOOLS = [
           type: 'string',
           description: 'Case-insensitive match against tool names, descriptions and seller names.',
         },
+        verified_only: {
+          type: 'boolean',
+          description: 'Return only sellers who proved they own the server they sell.',
+        },
       },
     },
   },
@@ -152,6 +156,16 @@ export const PAYGATE_TOOLS = [
       properties: { api_key: { type: 'string', description: 'Your seller key.' } },
     },
   },
+  {
+    name: 'verify_ownership',
+    description:
+      'Prove the user owns the server they listed, earning a trusted badge in the marketplace. Use after they have published their verification token at /.well-known/paygate-verify on the server\'s domain. PayGate fetches that URL and confirms the token matches. Verified sellers can be filtered for by buyers, so this directly increases how often their tools get chosen. Requires the api_key from register_server.',
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    inputSchema: {
+      type: 'object',
+      properties: { api_key: { type: 'string', description: 'Your seller key.' } },
+    },
+  },
 ];
 
 // ───────────────────────── Execução ─────────────────────────
@@ -167,8 +181,10 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
     const maxCents =
       typeof args?.max_price_usd === 'number' ? Math.round(args.max_price_usd * 100) : null;
     const needle = typeof args?.search === 'string' ? args.search.toLowerCase() : null;
+    const verifiedOnly = args?.verified_only === true;
 
     const catalog = sellers
+      .filter((seller) => (verifiedOnly ? seller.isVerified === 1 : true))
       .map((seller) => {
         const own = tools
           .filter((t) => t.developerId === seller.id)
@@ -180,6 +196,7 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
           );
         return {
           seller_name: seller.name,
+          verified: seller.isVerified === 1,
           proxy_mcp_url: `https://${host}/mcp/${seller.id}`,
           tools: own.map((t) => ({
             name: t.toolName,
@@ -188,12 +205,17 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
           })),
         };
       })
-      .filter((s) => s.tools.length > 0);
+      .filter((s) => s.tools.length > 0)
+      // Verificados primeiro: é o sinal de confiança que o comprador usa.
+      .sort((a, b) => Number(b.verified) - Number(a.verified));
 
     return toolResult({
       total_sellers: catalog.length,
       total_tools: catalog.reduce((n, s) => n + s.tools.length, 0),
+      verified_sellers: catalog.filter((s) => s.verified).length,
       payment: { protocol: 'x402 v2', asset: 'USDC', network: 'Base (eip155:8453)' },
+      trust:
+        'A verified seller proved they own the server they sell. Pass verified_only:true to see only those.',
       how_to_buy:
         'Call any tool at its proxy_mcp_url. The first call returns a payment challenge; sign it and repeat the call with the payment attached under params._meta["x402/payment"].',
       sellers: catalog,
@@ -288,6 +310,7 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
 
     const devId = `dev_${nanoid(10)}`;
     const apiKey = `pg_live_${nanoid(24)}`;
+    const verifyToken = `paygate-verify-${nanoid(20)}`;
 
     await db.insert(developers).values({
       id: devId,
@@ -298,6 +321,7 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
       walletAddress: wallet_address || null,
       stripeAccountId: stripe_account_id || null,
       commissionRate: 0.02,
+      verifyToken,
     });
 
     for (const t of discovered) {
@@ -323,8 +347,14 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
         ? 'None. Buyers settle USDC straight to your wallet; PayGate never receives or holds your funds.'
         : 'Stripe payouts are forwarded by PayGate.',
       commission: wallet_address ? '0% — nothing is deducted from a direct payment' : '2%',
+      verification: {
+        status: 'unverified',
+        why: 'Verified listings prove they own the server they sell. Buyers can filter for them, so verifying earns trust and more calls.',
+        how: `Serve the exact text "${verifyToken}" at https://<your-server-domain>/.well-known/paygate-verify (a plain-text response), then call verify_ownership with your api_key. Anyone can list a public server, but only its owner can publish this token on its domain.`,
+        token: verifyToken,
+      },
       next_step:
-        'Agents can now discover and pay for these tools. Adjust pricing with set_tool_price, track revenue with get_earnings.',
+        'Agents can now discover and pay for these tools. Verify ownership with verify_ownership to earn the trusted badge; adjust pricing with set_tool_price; track revenue with get_earnings.',
     });
   }
 
@@ -332,6 +362,49 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
   const auth = await resolveSeller(c, args);
   if (auth.error) return toolFailure(auth.error);
   const seller = auth.seller;
+
+  if (toolName === 'verify_ownership') {
+    if (seller.isVerified === 1) {
+      return toolResult({ verified: true, note: 'Already verified.' });
+    }
+    if (!seller.verifyToken) {
+      return toolFailure('This listing has no verification token.', 'Re-register to receive one.');
+    }
+
+    // O token só pode existir nesse caminho se o dono do domínio o publicou.
+    const origin = new URL(seller.targetServerUrl).origin;
+    const verifyUrl = `${origin}/.well-known/paygate-verify`;
+    let served = '';
+    try {
+      const resp = await fetch(verifyUrl, { method: 'GET' });
+      if (!resp.ok) {
+        return toolFailure(
+          `${verifyUrl} returned HTTP ${resp.status}.`,
+          `Serve the token "${seller.verifyToken}" as plain text at that path, then try again.`,
+        );
+      }
+      served = (await resp.text()).trim();
+    } catch (e: any) {
+      return toolFailure(
+        `Could not fetch ${verifyUrl}: ${e.message}`,
+        'The file must be publicly reachable over HTTPS.',
+      );
+    }
+
+    if (!served.includes(seller.verifyToken)) {
+      return toolFailure(
+        `${verifyUrl} did not contain the expected token.`,
+        `It must serve "${seller.verifyToken}". Found: "${served.slice(0, 60)}"`,
+      );
+    }
+
+    await db.update(developers).set({ isVerified: 1 }).where(eq(developers.id, seller.id));
+    return toolResult({
+      verified: true,
+      seller_id: seller.id,
+      note: 'Ownership confirmed. Your listing now shows a verified badge and appears in verified_only searches.',
+    });
+  }
 
   if (toolName === 'set_tool_price') {
     const { tool_name, price_usd, is_active } = args || {};
@@ -378,6 +451,12 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
     return toolResult({
       seller_id: seller.id,
       name: seller.name,
+      verified: seller.isVerified === 1,
+      ...(seller.isVerified === 1
+        ? {}
+        : {
+            verify_hint: `Serve "${seller.verifyToken}" at ${new URL(seller.targetServerUrl).origin}/.well-known/paygate-verify and call verify_ownership to earn the trusted badge.`,
+          }),
       proxy_mcp_url: `https://${host}/mcp/${seller.id}`,
       target_server_url: seller.targetServerUrl,
       payout_to: seller.walletAddress || seller.stripeAccountId,
