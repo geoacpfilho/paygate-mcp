@@ -148,7 +148,7 @@ if (receipt?.transaction) {
   console.log(`  pagador   : ${receipt.payer}`);
   console.log(`  valor     : $${receipt.amount_usd}`);
   console.log(`  taxa      : $${receipt.paygate_fee_usd}`);
-  console.log(`  dev       : $${receipt.developer_net_usd}\n`);
+  console.log(`  vendedor  : $${receipt.seller_net_usd}\n`);
   console.log('Resposta da ferramenta:');
   console.log(JSON.stringify(paid.result.content ?? paid.result, null, 2));
 } else {

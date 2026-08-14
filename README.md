@@ -66,9 +66,20 @@ The paying wallet needs USDC on Base — but **no ETH**: gas is covered by the f
 
 Both x402 transports are supported. HTTP clients can use the base64 `PAYMENT-REQUIRED` / `PAYMENT-SIGNATURE` / `PAYMENT-RESPONSE` headers instead of the MCP `_meta` binding.
 
-## For developers who want to get paid
+## For sellers
 
-Register your existing MCP server and PayGate proxies it, charging per call:
+The whole seller lifecycle is exposed as MCP tools, so an agent can run it end to end — tell your assistant to monetize your server and it can do everything below on its own:
+
+| Tool | What it does |
+| --- | --- |
+| `register_server` | Lists your server. Its tools are imported automatically; you get a proxy URL and a secret `api_key`. |
+| `verify_ownership` | Serve the token from registration at `/.well-known/paygate-verify` on your domain and call this to earn a **verified badge**. Buyers can filter for verified sellers. |
+| `set_tool_price` | Reprice a tool or take it off the market. |
+| `get_earnings` / `get_my_listing` | Revenue report and current listing. |
+
+**Buyers pay your wallet directly on-chain.** PayGate never holds your funds — there is no payout to wait for, no balance to withdraw, and no commission on direct payments. Your server is never modified: PayGate forwards `initialize`, `tools/list`, `resources/list` and `prompts/list` for free and charges only on `tools/call`.
+
+The same operations exist as REST (`POST /api/register`, `PUT /api/me/tools`, `GET /api/me/earnings`) if you prefer curl:
 
 ```bash
 curl -X POST https://paygate-mcp.rendercriativo.workers.dev/api/register \
@@ -77,8 +88,6 @@ curl -X POST https://paygate-mcp.rendercriativo.workers.dev/api/register \
        "target_server_url":"https://your-mcp-server.example.com/mcp",
        "wallet_address":"0xYourWallet"}'
 ```
-
-You get back an API key and a proxy URL at `/mcp/<devId>`. Set per-tool prices via `PUT /api/me/tools`, check earnings at `GET /api/me/earnings`. Your server stays unchanged — PayGate forwards `initialize`, `tools/list`, `resources/list` and `prompts/list` for free, and charges only on `tools/call`.
 
 ## Health and diagnostics
 
@@ -120,7 +129,9 @@ src/
 │   └── facilitator.ts       /verify and /settle, CDP JWT auth (EdDSA and ES256)
 ├── api/
 │   ├── proxy.ts             the paid path: challenge → verify → execute → settle
-│   ├── mcp-server.ts        PayGate's own MCP server (catalogue)
+│   ├── mcp-server.ts        PayGate's own MCP server
+│   ├── paygate-tools.ts     marketplace tools: register, verify, price, earnings
+│   ├── llms-txt.ts          /llms.txt for AI systems arriving over the web
 │   ├── register.ts          developer onboarding
 │   ├── dev-management.ts    profile, pricing, earnings
 │   └── discovery.ts         server card and UCP manifest
