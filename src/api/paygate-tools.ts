@@ -452,7 +452,7 @@ export async function executePaygateTool(c: Context, toolName: string, args: any
       seller_id: seller.id,
       name: seller.name,
       verified: seller.isVerified === 1,
-      ...(seller.isVerified === 1
+      ...(seller.isVerified === 1 || !seller.verifyToken
         ? {}
         : {
             verify_hint: `Serve "${seller.verifyToken}" at ${new URL(seller.targetServerUrl).origin}/.well-known/paygate-verify and call verify_ownership to earn the trusted badge.`,

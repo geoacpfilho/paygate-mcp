@@ -4,6 +4,7 @@ import { developers, registeredTools, transactions, processedPaymentProofs } fro
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { verifyStripeMppPayment, processDevPayout } from '../services/payment-verifier';
+import { DEFAULT_PRICE_CENTS } from './paygate-tools';
 import { resolveNetwork } from '../x402/config';
 import { verifyPayment, settlePayment } from '../x402/facilitator';
 import {
@@ -182,7 +183,7 @@ export async function mcpProxyHandler(c: Context) {
     .where(and(eq(registeredTools.developerId, devId), eq(registeredTools.toolName, toolName)))
     .limit(1);
 
-  const priceCents = toolConfig.length > 0 ? toolConfig[0].priceCents : 5;
+  const priceCents = toolConfig.length > 0 ? toolConfig[0].priceCents : DEFAULT_PRICE_CENTS;
   const network = resolveNetwork(c.env.X402_NETWORK);
   const paygateWallet = c.env.PAYGATE_WALLET_ADDRESS || DEFAULT_PAYGATE_WALLET;
   const facilitatorUrl = c.env.X402_FACILITATOR_URL || network.defaultFacilitator;

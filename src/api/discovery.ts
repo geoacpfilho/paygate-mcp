@@ -25,12 +25,33 @@ export async function serverCardHandler(c: Context) {
     tools: [
       {
         name: "list_registered_servers",
-        description: "List all monetized MCP servers and tools available through PayGate, including prices, tool descriptions, and proxy endpoints.",
-        annotations: {
-          readOnly: true,
-          readOnlyHint: true,
-          idempotent: true
-        }
+        description: "Browse every monetized MCP tool with its price per call and proxy endpoint. Free, no key needed.",
+        annotations: { readOnly: true, readOnlyHint: true, idempotent: true }
+      },
+      {
+        name: "register_server",
+        description: "List an MCP server for sale. Buyers pay the seller's wallet directly in USDC on Base; no payment code needed.",
+        annotations: { readOnly: false }
+      },
+      {
+        name: "verify_ownership",
+        description: "Prove you own the server you listed by serving a token at /.well-known/paygate-verify, earning a verified badge.",
+        annotations: { readOnly: false, idempotent: true }
+      },
+      {
+        name: "set_tool_price",
+        description: "Change a listed tool's price per call or take it off the market.",
+        annotations: { readOnly: false, idempotent: true }
+      },
+      {
+        name: "get_earnings",
+        description: "Revenue report for a seller: paid calls, gross and net, per tool.",
+        annotations: { readOnly: true, readOnlyHint: true, idempotent: true }
+      },
+      {
+        name: "get_my_listing",
+        description: "Review a seller's current listing, prices and payout destination.",
+        annotations: { readOnly: true, readOnlyHint: true, idempotent: true }
       }
     ]
   });

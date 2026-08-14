@@ -39,7 +39,9 @@ unchanged — they write no payment code and need no crypto knowledge, and can b
 paid to a Stripe account instead of a wallet. PayGate keeps 2%.
 
 Then \`set_tool_price\` to price each tool, \`get_earnings\` for revenue,
-\`get_my_listing\` to review the listing.
+\`get_my_listing\` to review the listing. To earn a verified badge, serve the
+token from registration at /.well-known/paygate-verify on the server's domain
+and call \`verify_ownership\` — buyers can filter for verified sellers.
 
 ## For agents acting on behalf of a buyer
 

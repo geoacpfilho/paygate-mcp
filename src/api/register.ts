@@ -4,6 +4,7 @@ import { developers, registeredTools } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { isEvmAddress } from './proxy';
+import { DEFAULT_PRICE_CENTS } from './paygate-tools';
 
 export async function registerDeveloperHandler(c: Context) {
   try {
@@ -36,6 +37,7 @@ export async function registerDeveloperHandler(c: Context) {
     const db = drizzle(c.env.DB);
     const devId = `dev_${nanoid(10)}`;
     const apiKey = `pg_live_${nanoid(24)}`;
+    const verifyToken = `paygate-verify-${nanoid(20)}`;
 
     // Criar hash da API Key para armazenamento seguro
     const encoder = new TextEncoder();
@@ -53,6 +55,7 @@ export async function registerDeveloperHandler(c: Context) {
       walletAddress: wallet_address || null,
       stripeAccountId: stripe_account_id || null,
       commissionRate: 0.02,
+      verifyToken,
     });
 
     // Buscar as ferramentas do servidor do dev via tools/list
@@ -77,7 +80,7 @@ export async function registerDeveloperHandler(c: Context) {
               id: `tool_${nanoid(10)}`,
               developerId: devId,
               toolName: t.name,
-              priceCents: 5, // Preço padrão: $0.05
+              priceCents: DEFAULT_PRICE_CENTS,
               description: t.description || null,
             });
             importedToolsCount++;
@@ -98,7 +101,12 @@ export async function registerDeveloperHandler(c: Context) {
         proxy_url: `https://${new URL(c.req.url).host}/mcp/${devId}`,
         api_key: apiKey,
         imported_tools_count: importedToolsCount,
-        default_price_per_call: '$0.05'
+        default_price_per_call: '$0.02',
+        verification: {
+          status: 'unverified',
+          token: verifyToken,
+          how: `Serve this token at <your-server-origin>/.well-known/paygate-verify, then call the verify_ownership MCP tool with your api_key.`
+        }
       }
     }, 201);
   } catch (error: any) {
